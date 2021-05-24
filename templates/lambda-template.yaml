@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: ninja-order-checkout-lambdas-stack 
+Resources:
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [lambda.amazonaws.com] }
+            Action: ["sts:AssumeRole"]
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: VPCAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: [
+                  "ec2:DescribeInstances",
+                  "ec2:CreateNetworkInterface",
+                  "ec2:AttachNetworkInterface",
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DeleteNetworkInterface"
+                ]
+                Resource: "*"
+
+  CheckoutTypeVerifierFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      FunctionName: ninja-checkout-type-verifier-function
+      CodeUri: ../functions/checkout-type-verifier/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Role:
+        Fn::GetAtt: 
+          LambdaRole.Arn
+
+  OrderCheckoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ninja-order-checkout-function
+      CodeUri: ../functions/order-checkout/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Role:
+        Fn::GetAtt: 
+          LambdaRole.Arn
+
+  SubmitOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ninja-submit-order-checkout-function
+      CodeUri: ../functions/submit-order/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Role:
+        Fn::GetAtt: 
+          LambdaRole.Arn
+
+  RefundOrderCheckoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ninja-refund-order-checkout-function
+      CodeUri: ../functions/refund-order-checkout/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Role:
+        Fn::GetAtt: 
+          LambdaRole.Arn
+
+Outputs:
+  CheckoutTypeVerifierFunctionArn:
+    Description: "Checkout Type Verifier Function ARN"
+    Value: !GetAtt CheckoutTypeVerifierFunction.Arn
+    Export:
+      Name: CheckoutTypeVerifierFunctionArn
+  OrderCheckoutFunctionArn:
+    Description: "Order Checkout Function ARN"
+    Value: !GetAtt OrderCheckoutFunction.Arn
+    Export:
+      Name: OrderCheckoutFunctionArn
+  SubmitOrderFunctionArn:
+    Description: "Submit Order Function ARN"
+    Value: !GetAtt SubmitOrderFunction.Arn
+    Export:
+      Name: SubmitOrderFunctionArn
+  RefundOrderCheckoutFunctionArn:
+    Description: "Refund Order Function ARN"
+    Value: !GetAtt RefundOrderCheckoutFunction.Arn
+    Export:
+      Name: RefundOrderCheckoutFunctionArn
+  CheckoutTypeVerifierFunctionName:
+    Description: "Checkout Type Verifier Function Name"
+    Value: !Ref CheckoutTypeVerifierFunction
+    Export:
+      Name: CheckoutTypeVerifierFunctionName
+  OrderCheckoutFunctionName:
+    Description: "Order Checkout Function Name"
+    Value: !Ref OrderCheckoutFunction
+    Export:
+      Name: OrderCheckoutFunctionName
+  SubmitOrderFunctionName:
+    Description: "Submit Order Function Name"
+    Value: !Ref SubmitOrderFunction
+    Export:
+      Name: SubmitOrderFunctionName
+  RefundOrderCheckoutFunctionName:
+    Description: "Refund Order Function Name"
+    Value: !Ref RefundOrderCheckoutFunction
+    Export:
+      Name: RefundOrderCheckoutFunctionName

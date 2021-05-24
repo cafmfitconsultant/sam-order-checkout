@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ninja-order-checkout-state-machine-stack
+Resources:
+  OrderStateMachine:
+    Type: AWS::Serverless::StateMachine 
+    Properties:
+      Name: ninja-order-checkout-state-machine
+      DefinitionUri: ../statemachine/sample.asl.json
+      DefinitionSubstitutions:
+        CheckoutTypeVerifierFunctionArn: 
+          Fn::ImportValue: 
+            CheckoutTypeVerifierFunctionArn
+        OrderCheckoutFunctionArn: 
+          Fn::ImportValue: 
+            OrderCheckoutFunctionArn
+        SubmitOrderFunctionArn: 
+          Fn::ImportValue: 
+            SubmitOrderFunctionArn
+        RefundOrderCheckoutFunctionArn: 
+          Fn::ImportValue: 
+            RefundOrderCheckoutFunctionArn
+      Policies: 
+        - LambdaInvokePolicy:
+            FunctionName: 
+              Fn::ImportValue: 
+                CheckoutTypeVerifierFunctionName
+        - LambdaInvokePolicy:
+            FunctionName: 
+              Fn::ImportValue: 
+                OrderCheckoutFunctionName
+        - LambdaInvokePolicy:
+            FunctionName: 
+              Fn::ImportValue: 
+                SubmitOrderFunctionName
+        - LambdaInvokePolicy:
+            FunctionName: 
+              Fn::ImportValue: 
+                RefundOrderCheckoutFunctionName
+
+Outputs:
+  OrderStateMachineArn:
+    Description: "Order State Machine ARN"
+    Value: !GetAtt OrderStateMachine.Arn
+    Export:
+      Name: OrderStateMachineArn

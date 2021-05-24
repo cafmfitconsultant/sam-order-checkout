@@ -1,0 +1,134 @@
+{
+    "Comment": "A state machine that does order checkout",
+    "StartAt": "checkoutTypeVerifier",
+    "States": {
+        "checkoutTypeVerifier": {
+            "Type": "Task",
+            "Resource": "${CheckoutTypeVerifierFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "Next": "hasPayment"
+        },
+        "hasPayment": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.creditCardPayment",
+                    "IsPresent": true,
+                    "Next": "orderCheckout"
+                }
+            ],
+            "Default": "submitOrder"
+        },
+        "orderCheckout": {
+            "Type": "Task",
+            "Resource": "${OrderCheckoutFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "hasSuccededCheckout"
+        },
+        "hasSuccededCheckout": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.error.message",
+                    "IsPresent": true,
+                    "Next": "checkoutFailState"
+                }
+            ],
+            "Default": "submitOrder"
+        },
+        "checkoutFailState": {
+            "Type": "Fail",
+            "Cause": "failed checkout",
+            "Error": "$.error"
+        },
+        "submitOrder": {
+            "Type": "Task",
+            "Resource": "${SubmitOrderFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "hasSuccededSubmitOrder"
+        },
+        "hasSuccededSubmitOrder": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "And": [
+                        {
+                            "Variable": "$.hasCheckout",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.error.message",
+                            "IsPresent": true
+                        }
+                    ],
+                    "Next": "refundOrder"
+                }
+            ],
+            "Default": "succededOrder"
+        },
+        "succededOrder": {
+            "Type": "Succeed"
+        },
+        "refundOrder": {
+            "Type": "Task",
+            "Resource": "${RefundOrderCheckoutFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "hasSuccededRefundOrder"
+        },
+        "hasSuccededRefundOrder": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.error.message",
+                    "IsPresent": true,
+                    "Next": "refundOrderFailState"
+                }
+            ],
+            "Default": "succededRefund"
+        },
+        "refundOrderFailState": {
+            "Type": "Fail",
+            "Cause": "failed submit order",
+            "Error": "$.error"
+        },
+        "succededRefund": {
+            "Type": "Succeed"
+        }
+    }
+}

@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ninja-order-checkout-api-gateway-stack 
+Resources:
+  
+  OrderCheckoutApiGatewayExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [apigateway.amazonaws.com] }
+            Action: ["sts:AssumeRole"]
+      Path: /
+      Policies:
+        - PolicyName: StepFunctionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: 
+                  Fn::ImportValue: 
+                    OrderStateMachineArn
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: 
+                  Fn::ImportValue: 
+                    CheckoutTypeVerifierFunctionArn
+        - PolicyName: CloudwatchPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                 - logs:CreateLogStream
+                 - logs:CreateLogGroup
+                 - logs:PutLogEvents
+                Resource: "*"
+
+  OrderCheckoutApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: Example API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: order-checkout-api
+
+  CheckoutPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      OperationName: /order/checkout
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: 
+          !Sub
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: 
+                 Fn::ImportValue: 
+                  CheckoutTypeVerifierFunctionArn
+      ResourceId: 
+        !GetAtt OrderCheckoutApiGateway.RootResourceId
+      RestApiId: 
+        !Ref OrderCheckoutApiGateway
+
+  OrderCheckoutApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - CheckoutPostMethod
+    Properties:
+      RestApiId: !Ref OrderCheckoutApiGateway
+      StageName: 'ninja'
